@@ -1,4 +1,5 @@
 use std::io::{self, Write};
+use chrono::NaiveDate;
 use clap::{Arg, Command};
 
 mod task;
@@ -35,6 +36,7 @@ fn main() {
         println!("3. Complete a task");
         println!("4. Edit a task");
         println!("5. Save and exit");
+        println!("6. Exit without saving");
 
         print!("Enter your choice: ");
         io::stdout().flush().unwrap();
@@ -54,8 +56,23 @@ fn main() {
                 let mut priority_str = String::new();
                 io::stdin().read_line(&mut priority_str).unwrap();
 
-                let priority = priority_str.trim().parse::<u8>().unwrap_or(5); // Default to lowest priority
-                todo_list.add_task(description.trim().to_string(), priority);
+                let priority = priority_str.trim().parse::<u8>().unwrap_or(5);
+
+                print!("Enter task deadline (YYYY-MM-DD) or press Enter to skip: ");
+                io::stdout().flush().unwrap();
+                let mut deadline_str = String::new();
+                io::stdin().read_line(&mut deadline_str).unwrap();
+
+                let deadline = if deadline_str.trim().is_empty() {
+                    None
+                } else {
+                    Some(NaiveDate::parse_from_str(deadline_str.trim(), "%Y-%m-%d").unwrap_or_else(|_| {
+                        println!("Invalid date format, skipping deadline.");
+                        NaiveDate::from_ymd_opt(1970, 1, 1).unwrap()
+                    }))
+                };
+
+                todo_list.add_task(description.trim().to_string(), priority, deadline);
             },
             "2" => {
                 todo_list.show_tasks();
@@ -99,6 +116,10 @@ fn main() {
                 if let Err(e) = todo_list.save_to_file(filename) {
                     println!("Failed to save to-do list: {}", e);
                 }
+                println!("Goodbye!");
+                break;
+            },
+            "6" => {
                 println!("Goodbye!");
                 break;
             },
