@@ -1,3 +1,4 @@
+use crossterm::{execute, style::Stylize, terminal::{Clear, ClearType}};
 use std::io::{self, Write};
 use chrono::NaiveDate;
 use clap::{Arg, Command};
@@ -29,14 +30,24 @@ fn main() {
         TodoList::new()
     });
 
+    let mut stdout = io::stdout();
+
     loop {
-        println!("\nWhat would you like to do?");
-        println!("1. Add a task");
-        println!("2. View tasks");
-        println!("3. Complete a task");
-        println!("4. Edit a task");
-        println!("5. Save and exit");
-        println!("6. Exit without saving");
+        // Clear the screen
+        execute!(stdout, Clear(ClearType::All)).unwrap();
+        print!("\x1B[2J\x1B[H"); // Clear the screen and reset cursor position
+        stdout.flush().unwrap();
+
+        // Print the header
+        println!("{}", "To-Do List".bold().green());
+
+        println!("{}", "1. Add a task".green());
+        println!("{}", "2. View tasks".blue());
+        println!("{}", "3. Complete a task".yellow());
+        println!("{}", "4. Edit a task".magenta());
+        println!("{}", "5. Delete a task".red()); // Red color for delete option
+        println!("{}", "6. Save and exit".cyan());
+        println!("{}", "7. Exit without saving".red());
 
         print!("Enter your choice: ");
         io::stdout().flush().unwrap();
@@ -75,7 +86,17 @@ fn main() {
                 todo_list.add_task(description.trim().to_string(), priority, deadline);
             },
             "2" => {
-                todo_list.show_tasks();
+                execute!(stdout, Clear(ClearType::All)).unwrap();
+                print!("\x1B[2J\x1B[H");
+                stdout.flush().unwrap();
+
+                // Print the header
+                println!("{}", "Current Tasks".bold().green());
+
+                todo_list.show_tasks(); // Display the current tasks
+                // Pause to allow the user to see the tasks
+                println!("Press Enter to continue...");
+                let _ = io::stdin().read_line(&mut String::new());
             },
             "3" => {
                 print!("Enter task number to complete: ");
@@ -113,13 +134,28 @@ fn main() {
                 }
             },
             "5" => {
+                print!("Enter task number to delete: ");
+                io::stdout().flush().unwrap();
+                let mut index_str = String::new();
+                io::stdin().read_line(&mut index_str).unwrap();
+
+                match index_str.trim().parse::<usize>() {
+                    Ok(index) => {
+                        if let Err(e) = todo_list.delete_task(index) {
+                            println!("{}", e);
+                        }
+                    },
+                    Err(_) => println!("Please enter a valid number."),
+                }
+            },
+            "6" => {
                 if let Err(e) = todo_list.save_to_file(filename) {
                     println!("Failed to save to-do list: {}", e);
                 }
                 println!("Goodbye!");
                 break;
             },
-            "6" => {
+            "7" => {
                 println!("Goodbye!");
                 break;
             },

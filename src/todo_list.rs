@@ -89,4 +89,12 @@ impl TodoList {
         self.tasks[index - 1].description = new_description;
         Ok(())
     }
+
+    pub(crate) fn delete_task(&mut self, index: usize) -> Result<(), String> {
+        if index < 1 || index > self.tasks.len() {
+            return Err("Invalid task number.".to_string());
+        }
+        self.tasks.remove(index - 1);
+        Ok(())
+    }
 }
