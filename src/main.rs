@@ -1,4 +1,5 @@
 use std::io::{self, Write};
+use clap::{Arg, Command};
 
 mod task;
 mod todo_list;
@@ -8,7 +9,20 @@ use todo_list::TodoList;
 fn main() {
     println!("Welcome to the To-Do List CLI Application!");
 
-    let filename = "todo_list.txt";
+    let matches = Command::new("Todo CLI")
+        .version("1.0")
+        .author("Your Name <your.email@example.com>")
+        .about("A simple to-do list CLI application")
+        .arg(Arg::new("file")
+            .short('f')
+            .long("file")
+            .value_name("FILE")
+            .help("Specifies the to-do list file")
+            .default_value("todo_list.txt"))
+        .get_matches();
+
+    let filename = matches.get_one::<String>("file").map(|s| s.as_str()).unwrap_or("todo_list.txt");
+
     let mut todo_list = TodoList::load_from_file(filename).unwrap_or_else(|_| {
         println!("Creating a new to-do list.");
         TodoList::new()
@@ -19,7 +33,8 @@ fn main() {
         println!("1. Add a task");
         println!("2. View tasks");
         println!("3. Complete a task");
-        println!("4. Save and exit");
+        println!("4. Edit a task");
+        println!("5. Save and exit");
 
         print!("Enter your choice: ");
         io::stdout().flush().unwrap();
@@ -33,7 +48,14 @@ fn main() {
                 io::stdout().flush().unwrap();
                 let mut description = String::new();
                 io::stdin().read_line(&mut description).unwrap();
-                todo_list.add_task(description.trim().to_string());
+
+                print!("Enter task priority (1-5, 1 is highest): ");
+                io::stdout().flush().unwrap();
+                let mut priority_str = String::new();
+                io::stdin().read_line(&mut priority_str).unwrap();
+
+                let priority = priority_str.trim().parse::<u8>().unwrap_or(5); // Default to lowest priority
+                todo_list.add_task(description.trim().to_string(), priority);
             },
             "2" => {
                 todo_list.show_tasks();
@@ -54,6 +76,26 @@ fn main() {
                 }
             },
             "4" => {
+                print!("Enter task number to edit: ");
+                io::stdout().flush().unwrap();
+                let mut index_str = String::new();
+                io::stdin().read_line(&mut index_str).unwrap();
+
+                match index_str.trim().parse::<usize>() {
+                    Ok(index) => {
+                        print!("Enter new task description: ");
+                        io::stdout().flush().unwrap();
+                        let mut new_description = String::new();
+                        io::stdin().read_line(&mut new_description).unwrap();
+
+                        if let Err(e) = todo_list.edit_task(index, new_description.trim().to_string()) {
+                            println!("{}", e);
+                        }
+                    },
+                    Err(_) => println!("Please enter a valid number."),
+                }
+            },
+            "5" => {
                 if let Err(e) = todo_list.save_to_file(filename) {
                     println!("Failed to save to-do list: {}", e);
                 }
