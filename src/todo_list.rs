@@ -2,6 +2,7 @@ use crate::task::Task;
 use std::fs::OpenOptions;
 use std::io;
 use std::io::Write;
+use chrono::NaiveDate;
 
 pub(crate) struct TodoList {
     tasks: Vec<Task>,
@@ -14,8 +15,8 @@ impl TodoList {
         }
     }
 
-    pub(crate) fn add_task(&mut self, description: String, priority: u8) {
-        let task = Task::new(description, priority);
+    pub(crate) fn add_task(&mut self, description: String, priority: u8, deadline: Option<NaiveDate>) {
+        let task = Task::new(description, priority, deadline);
         self.tasks.push(task);
         self.tasks.sort_by_key(|t| t.priority); // Keep tasks sorted by priority
     }
@@ -23,7 +24,12 @@ impl TodoList {
     pub(crate) fn show_tasks(&self) {
         for (index, task) in self.tasks.iter().enumerate() {
             let status = if task.completed { "✓" } else { " " };
-            println!("{}: [{}] {} (Priority: {})", index + 1, status, task.description, task.priority);
+            let deadline_str = if let Some(deadline) = task.deadline {
+                format!(" (Deadline: {})", deadline)
+            } else {
+                String::from("")
+            };
+            println!("{}: [{}] {} (Priority: {}){}", index + 1, status, task.description, task.priority, deadline_str);
         }
     }
 
@@ -43,7 +49,7 @@ impl TodoList {
             .open(filename)?;
 
         for task in &self.tasks {
-            writeln!(file, "{},{},{}", task.description, task.completed, task.priority)?;
+            writeln!(file, "{},{},{},{:?}", task.description, task.completed, task.priority, task.deadline)?;
         }
 
         Ok(())
@@ -63,11 +69,12 @@ impl TodoList {
             for line in reader.lines() {
                 let line = line?;
                 let parts: Vec<&str> = line.split(',').collect();
-                if parts.len() == 3 {
+                if parts.len() == 4 {
                     let description = parts[0].to_string();
                     let completed = parts[1].parse().unwrap_or(false);
                     let priority = parts[2].parse().unwrap_or(5);
-                    todo_list.tasks.push(Task { description, completed, priority });
+                    let deadline = if priority <= 5 { Some(NaiveDate::parse_from_str(parts[3], "%Y-%m-%d").unwrap_or(NaiveDate::from_ymd_opt(1970, 1, 1).unwrap())) } else { None };
+                    todo_list.tasks.push(Task { description, completed, priority, deadline });
                 }
             }
         }
